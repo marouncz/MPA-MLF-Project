@@ -12,7 +12,7 @@ from sklearn.utils.class_weight import compute_class_weight
 from tensorflow.keras import backend as K
 
 
-def focal_loss(gamma=3., alpha=0.4):
+def focal_loss(gamma=2., alpha=0.25):
     def focal_loss_fixed(y_true, y_pred):
         y_true = tf.cast(y_true, tf.int32)
         y_true = tf.one_hot(y_true, depth=3)  # 3 classes (0, 1, 2)
