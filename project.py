@@ -8,6 +8,21 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
+from sklearn.utils.class_weight import compute_class_weight
+from tensorflow.keras import backend as K
+
+
+def focal_loss(gamma=3., alpha=0.4):
+    def focal_loss_fixed(y_true, y_pred):
+        y_true = tf.cast(y_true, tf.int32)
+        y_true = tf.one_hot(y_true, depth=3)  # 3 classes (0, 1, 2)
+        
+        y_pred = tf.clip_by_value(y_pred, K.epsilon(), 1. - K.epsilon())
+        cross_entropy = -y_true * tf.math.log(y_pred)
+        loss = alpha * tf.math.pow(1 - y_pred, gamma) * cross_entropy
+        return tf.reduce_mean(tf.reduce_sum(loss, axis=1))
+    return focal_loss_fixed
+
 
 # Paths
 TRAIN_DIR = './Train'
@@ -43,21 +58,25 @@ X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_st
 X_train = np.expand_dims(X_train, axis=-1)
 X_val = np.expand_dims(X_val, axis=-1)
 
+# Automatically calculate class weights
+class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(y_train), y=y_train)
+class_weights_dict = dict(enumerate(class_weights))
+
 # Build the CNN model
 def build_model():
     model = keras.Sequential([
-        layers.Conv2D(32, (3, 3), activation='relu', input_shape=(72, 48, 1)),
+        layers.Conv2D(64, (3, 3), activation='relu', input_shape=(72, 48, 1)),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
 
-        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.Conv2D(128, (3, 3), activation='relu'),
         layers.BatchNormalization(),
         layers.MaxPooling2D((2, 2)),
-        layers.Dropout(0.25),
+        layers.Dropout(0.3),
 
         layers.Flatten(),
-        layers.Dense(128, activation='relu'),
+        layers.Dense(256, activation='relu'),
         layers.BatchNormalization(),
         layers.Dropout(0.5),
 
@@ -65,7 +84,7 @@ def build_model():
     ])
     
     model.compile(optimizer=Adam(0.001),
-                  loss='sparse_categorical_crossentropy',
+                  loss=focal_loss(gamma=2., alpha=0.25),
                   metrics=['accuracy'])
     return model
 
@@ -85,6 +104,7 @@ history = model.fit(
     data_gen.flow(X_train, y_train, batch_size=32),
     validation_data=(X_val, y_val),
     epochs=50,
+    class_weight=class_weights_dict, 
     # callbacks=[
     #     keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
     #     keras.callbacks.ReduceLROnPlateau(patience=3)
