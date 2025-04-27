@@ -4,6 +4,7 @@ import pandas as pd
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
@@ -63,7 +64,7 @@ def build_model():
         layers.Dense(3, activation='softmax')
     ])
     
-    model.compile(optimizer='adam',
+    model.compile(optimizer=Adam(0.001),
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
     return model
@@ -84,10 +85,10 @@ history = model.fit(
     data_gen.flow(X_train, y_train, batch_size=32),
     validation_data=(X_val, y_val),
     epochs=50,
-    callbacks=[
-        keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
-        keras.callbacks.ReduceLROnPlateau(patience=3)
-    ]
+    # callbacks=[
+    #     keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
+    #     keras.callbacks.ReduceLROnPlateau(patience=3)
+    # ]
 )
 
 # Load test data
