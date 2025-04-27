@@ -5,6 +5,8 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 # Paths
 TRAIN_DIR = './Train'
@@ -121,3 +123,17 @@ print("Submission file saved as submission.csv") """
 # Evaluate model on validation set
 val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=2)
 print(f"Validation Accuracy: {val_accuracy:.4f}")
+
+
+# Predict on validation set
+y_val_pred = model.predict(X_val)
+y_val_pred_classes = np.argmax(y_val_pred, axis=1)
+
+# Compute confusion matrix
+cm = confusion_matrix(y_val, y_val_pred_classes)
+
+# Plot confusion matrix
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1, 2])
+disp.plot(cmap=plt.cm.Blues)
+plt.title('Confusion Matrix on Validation Set')
+plt.show()
