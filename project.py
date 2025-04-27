@@ -131,14 +131,14 @@ X_test = np.expand_dims(X_test, axis=-1)
 predictions = model.predict(X_test)
 predicted_labels = np.argmax(predictions, axis=1)
 
-""" # Save for Kaggle
+# Save for Kaggle
 submission = pd.DataFrame({
-    'file_name': test_file_names,
-    'label': predicted_labels
+    'ID': test_file_names,
+    'target': predicted_labels
 })
 submission.to_csv('submission.csv', index=False)
 
-print("Submission file saved as submission.csv") """
+print("Submission file saved as submission.csv")
 
 
 # Evaluate model on validation set
