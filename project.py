@@ -1,0 +1,123 @@
+import os
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from sklearn.model_selection import train_test_split
+
+# Paths
+TRAIN_DIR = './Train'
+TEST_DIR = './Test'
+LABELS_FILE = './label_train.csv'
+
+# Load labels
+labels_df = pd.read_csv(LABELS_FILE)
+
+# Load training data
+def load_data(directory, labels_df):
+    X = []
+    y = []
+    for idx, row in labels_df.iterrows():
+        file_name = f"{row['ID']}.npy"
+        file_path = os.path.join(directory, file_name)
+        sample = np.load(file_path)
+        X.append(sample)
+        y.append(row['target'])
+    return np.array(X), np.array(y)
+
+X, y = load_data(TRAIN_DIR, labels_df)
+
+print(f"Training data shape: {X.shape}")
+
+# Normalize data
+X = (X - np.mean(X)) / np.std(X)
+
+# Split into train and validation sets
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+# Expand dimensions if needed (add channel dimension)
+X_train = np.expand_dims(X_train, axis=-1)
+X_val = np.expand_dims(X_val, axis=-1)
+
+# Build the CNN model
+def build_model():
+    model = keras.Sequential([
+        layers.Conv2D(32, (3, 3), activation='relu', input_shape=(72, 48, 1)),
+        layers.BatchNormalization(),
+        layers.MaxPooling2D((2, 2)),
+        layers.Dropout(0.25),
+
+        layers.Conv2D(64, (3, 3), activation='relu'),
+        layers.BatchNormalization(),
+        layers.MaxPooling2D((2, 2)),
+        layers.Dropout(0.25),
+
+        layers.Flatten(),
+        layers.Dense(128, activation='relu'),
+        layers.BatchNormalization(),
+        layers.Dropout(0.5),
+
+        layers.Dense(3, activation='softmax')
+    ])
+    
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
+
+model = build_model()
+model.summary()
+
+# Data augmentation (optional)
+data_gen = keras.preprocessing.image.ImageDataGenerator(
+    rotation_range=10,
+    width_shift_range=0.1,
+    height_shift_range=0.1,
+    zoom_range=0.1
+)
+
+# Train the model
+history = model.fit(
+    data_gen.flow(X_train, y_train, batch_size=32),
+    validation_data=(X_val, y_val),
+    epochs=50,
+    callbacks=[
+        keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
+        keras.callbacks.ReduceLROnPlateau(patience=3)
+    ]
+)
+
+# Load test data
+def load_test_data(directory):
+    files = sorted(os.listdir(directory), key=lambda x: int(x.split('.')[0]))
+    X_test = []
+    file_names = []
+    for file in files:
+        file_path = os.path.join(directory, file)
+        sample = np.load(file_path)
+        X_test.append(sample)
+        file_names.append(file.split('.')[0])
+    return np.array(X_test), file_names
+
+X_test, test_file_names = load_test_data(TEST_DIR)
+X_test = (X_test - np.mean(X_test)) / np.std(X_test)
+X_test = np.expand_dims(X_test, axis=-1)
+
+# Predict
+predictions = model.predict(X_test)
+predicted_labels = np.argmax(predictions, axis=1)
+
+""" # Save for Kaggle
+submission = pd.DataFrame({
+    'file_name': test_file_names,
+    'label': predicted_labels
+})
+submission.to_csv('submission.csv', index=False)
+
+print("Submission file saved as submission.csv") """
+
+
+# Evaluate model on validation set
+val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=2)
+print(f"Validation Accuracy: {val_accuracy:.4f}")
