@@ -84,7 +84,7 @@ def build_model():
     ])
     
     model.compile(optimizer=Adam(0.001),
-                  loss=focal_loss(gamma=2., alpha=0.25),
+                  loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
     return model
 
