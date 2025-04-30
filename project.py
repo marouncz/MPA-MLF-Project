@@ -103,7 +103,7 @@ data_gen = keras.preprocessing.image.ImageDataGenerator(
 history = model.fit(
     data_gen.flow(X_train, y_train, batch_size=32),
     validation_data=(X_val, y_val),
-    epochs=50,
+    epochs=30,
     class_weight=class_weights_dict, 
     # callbacks=[
     #     keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True),
